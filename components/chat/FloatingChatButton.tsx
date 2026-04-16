@@ -33,8 +33,13 @@ let GEMINI_API_KEY = '';
 try {
     const secrets = require('../config/secrets');
     GEMINI_API_KEY = secrets.GEMINI_API_KEY || '';
+    if (GEMINI_API_KEY) {
+        console.log('✅ Gemini API key loaded (starts with: ' + GEMINI_API_KEY.substring(0, 5) + '...)');
+    } else {
+        console.warn('⚠️ Gemini API key is empty in secrets.ts');
+    }
 } catch (e) {
-    console.log('⚠️ Gemini API key not found, using fallback mode');
+    console.log('⚠️ Gemini API key not found in secrets.ts, using fallback mode');
 }
 
 const SYSTEM_PROMPT = `Ты — AI-помощник по кибербезопасности в приложении PhishGuard.
