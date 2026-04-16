@@ -68,11 +68,12 @@ async function callGemini(messages: { role: string; content: string }[]): Promis
         });
 
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`,
             {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'x-goog-api-key': GEMINI_API_KEY,
                 },
                 body: JSON.stringify({
                     contents: contents.slice(-10), // Последние 10 сообщений
