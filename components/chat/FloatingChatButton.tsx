@@ -28,7 +28,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 // GOOGLE GEMINI API (БЕСПЛАТНЫЙ!)
 // Получить ключ: https://aistudio.google.com/app/apikey
 // ============================================================
-const GEMINI_API_KEY = 'AQ.Ab8RN6IC9RzT5bRBvX3303PclCqtNXN2yl3gBwHN49Z_NWMYUg';
+const GEMINI_API_KEY = 'AQ.Ab8RN6ItX6Rtc1JxDRUslMQpzl6b1uSiyFpgSLV3a3yortDpkA';
 
 const SYSTEM_PROMPT = `Ты — AI-помощник по кибербезопасности в приложении PhishGuard.
 
@@ -68,12 +68,11 @@ async function callGemini(messages: { role: string; content: string }[]): Promis
         });
 
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
             {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-goog-api-key': GEMINI_API_KEY,
                 },
                 body: JSON.stringify({
                     contents: contents.slice(-10), // Последние 10 сообщений
