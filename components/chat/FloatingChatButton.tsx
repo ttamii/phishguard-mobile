@@ -31,7 +31,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 // Ключ загружается из config/secrets.json (не пушится в GitHub)
 let GEMINI_API_KEY = '';
 try {
-    const secrets = require('../config/secrets.json');
+    const secrets = require('../../config/secrets.json');
     GEMINI_API_KEY = secrets.GEMINI_API_KEY || '';
     if (GEMINI_API_KEY) {
         console.log('✅ Gemini API key loaded from JSON (starts with: ' + GEMINI_API_KEY.substring(0, 5) + '...)');
