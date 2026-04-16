@@ -28,18 +28,18 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 // GOOGLE GEMINI API (БЕСПЛАТНЫЙ!)
 // Получить ключ: https://aistudio.google.com/app/apikey
 // ============================================================
-// Ключ загружается из config/secrets.ts (не пушится в GitHub)
+// Ключ загружается из config/secrets.json (не пушится в GitHub)
 let GEMINI_API_KEY = '';
 try {
-    const secrets = require('../config/secrets');
+    const secrets = require('../config/secrets.json');
     GEMINI_API_KEY = secrets.GEMINI_API_KEY || '';
     if (GEMINI_API_KEY) {
-        console.log('✅ Gemini API key loaded (starts with: ' + GEMINI_API_KEY.substring(0, 5) + '...)');
+        console.log('✅ Gemini API key loaded from JSON (starts with: ' + GEMINI_API_KEY.substring(0, 5) + '...)');
     } else {
-        console.warn('⚠️ Gemini API key is empty in secrets.ts');
+        console.warn('⚠️ Gemini API key is empty in secrets.json');
     }
 } catch (e) {
-    console.log('⚠️ Gemini API key not found in secrets.ts, using fallback mode');
+    console.log('⚠️ Gemini API key not found in secrets.json, using fallback mode');
 }
 
 const SYSTEM_PROMPT = `Ты — AI-помощник по кибербезопасности в приложении PhishGuard.
