@@ -75,7 +75,7 @@ async function callGemini(messages: { role: string; content: string }[]): Promis
                         temperature: 0.7,
                         topK: 40,
                         topP: 0.95,
-                        maxOutputTokens: 200,
+                        maxOutputTokens: 500,
                     },
                     safetySettings: [
                         { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
