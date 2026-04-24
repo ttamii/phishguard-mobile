@@ -105,8 +105,8 @@ export default function DashboardScreen() {
             style={styles.actionGradient}
           >
             <Ionicons name="link" size={32} color={Colors.text.primary} />
-            <Text style={styles.actionTitle}>URL Сканер</Text>
-            <Text style={styles.actionDesc}>Проверка ссылок</Text>
+            <Text style={styles.actionTitle} numberOfLines={1}>URL Сканер</Text>
+            <Text style={styles.actionDesc} numberOfLines={1}>Проверка ссылок</Text>
           </LinearGradient>
         </TouchableOpacity>
 
@@ -119,9 +119,9 @@ export default function DashboardScreen() {
             colors={[Colors.accent.purple, '#7C3AED']}
             style={styles.actionGradient}
           >
-            <Ionicons name="chatbubble-ellipses" size={32} color={Colors.text.primary} />
-            <Text style={styles.actionTitle}>Сообщения</Text>
-            <Text style={styles.actionDesc}>Анализ SMS/Email</Text>
+            <Ionicons name="key" size={32} color={Colors.text.primary} />
+            <Text style={styles.actionTitle} numberOfLines={1}>Пароли</Text>
+            <Text style={styles.actionDesc} numberOfLines={1}>Проверка надежности</Text>
           </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
@@ -308,9 +308,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   actionGradient: {
-    padding: Spacing.lg,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.xs,
     alignItems: 'center',
+    justifyContent: 'center',
     minHeight: 120,
+    flex: 1,
+    borderRadius: BorderRadius.lg,
   },
   actionTitle: {
     ...Typography.bodyMedium,
@@ -321,6 +325,8 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     color: Colors.text.secondary,
     marginTop: Spacing.xs,
+    textAlign: 'center',
+    fontSize: 11, // Чуть меньше, чтобы гарантированно влезло
   },
   sectionTitle: {
     ...Typography.h4,

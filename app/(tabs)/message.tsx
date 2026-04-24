@@ -1,289 +1,365 @@
 import React, { useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    Alert
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  TextInput,
+  TouchableOpacity
 } from 'react-native';
-import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { router } from 'expo-router';
+import * as Clipboard from 'expo-clipboard';
 
 import { Colors } from '../../constants/Colors';
 import { Typography, Spacing, BorderRadius } from '../../constants/Typography';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { useScanStore } from '../../store/scanStore';
+
+// Для связи с нашим локальным API для теста (или Render для продакшена)
+// Если бэкенд выключен, мы используем простую локальную оценку ниже для быстрого UI теста
+const API_URL = 'http://127.0.0.1:8000/api/v1/password';
 
 export default function MessageScreen() {
-    const [message, setMessage] = useState('');
-    const { isScanning, scanURL, scanError, clearError } = useScanStore();
+  const insets = useSafeAreaInsets();
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [result, setResult] = useState<any>(null);
 
-    // Извлечение URL из текста
-    const extractUrls = (text: string): string[] => {
-        const urlRegex = /(https?:\/\/[^\s]+)/g;
-        const matches = text.match(urlRegex);
-        return matches ? matches : [];
-    };
+  // Локальная заглушка на случай, если локальный бэкенд недоступен
+  const localAnalyze = (text: string) => {
+    if (!text) return null;
+    let score = 0;
+    const feedback = [];
+    if (text.length < 8) feedback.push("Пароль слишком короткий (минимум 8 символов)");
+    else score += 1;
+    if (!/[A-Z]/.test(text)) feedback.push("Добавьте заглавные буквы");
+    else score += 1;
+    if (!/[0-9]/.test(text)) feedback.push("Добавьте цифры");
+    else score += 1;
+    if (!/[^a-zA-Z0-9]/.test(text)) feedback.push("Добавьте специальные символы (!@#$%)");
+    else score += 1;
+    if (score === 4) feedback.push("Отличный пароль!");
+    
+    return { score, feedback };
+  };
 
-    const foundUrls = extractUrls(message);
+  const analyzePassword = async (text: string) => {
+    setPassword(text);
+    if (!text) {
+      setResult(null);
+      return;
+    }
 
-    const handleScan = async () => {
-        clearError();
+    try {
+      const res = await fetch(`${API_URL}/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: text })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setResult(data);
+      } else {
+        // Если API не отвечает (например, с телефона не видит localhost), используем локальную заглушку
+        setResult(localAnalyze(text));
+      }
+    } catch (e) {
+      // Заглушка для демонстрации UI без бэкенда
+      setResult(localAnalyze(text));
+    }
+  };
 
-        if (!message.trim()) {
-            Alert.alert('Ошибка', 'Введите текст сообщения для анализа');
-            return;
-        }
+  const generatePassword = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch(`${API_URL}/generate?length=16`);
+      if (res.ok) {
+        const data = await res.json();
+        setPassword(data.password);
+        analyzePassword(data.password);
+      } else {
+        throw new Error("Local API offline");
+      }
+    } catch (e) {
+      // Локальная генерация, если API недоступно
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
+      let p = "";
+      for (let i = 0; i < 16; i++) {
+        p += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      setPassword(p);
+      analyzePassword(p);
+      setShowPassword(true); // Автоматически показываем сгенерированный пароль
+    } finally {
+      setGenerating(false);
+    }
+  };
 
-        const urls = extractUrls(message.trim());
+  const copyToClipboard = async () => {
+    if (password) {
+      await Clipboard.setStringAsync(password);
+    }
+  };
 
-        if (urls.length === 0) {
-            Alert.alert('Не найдено', 'В сообщении не обнаружено URL-адресов для проверки');
-            return;
-        }
+  const getScoreColor = (score: number) => {
+    switch (score) {
+      case 0:
+      case 1: return Colors.status.dangerous;
+      case 2: return Colors.status.warning || '#F59E0B';
+      case 3:
+      case 4: return Colors.status.safe;
+      default: return Colors.text.muted;
+    }
+  };
 
-        // Сканируем первый найденный URL
-        const result = await scanURL(urls[0]);
+  const getScoreText = (score: number) => {
+    switch (score) {
+      case 0: return 'Очень слабый';
+      case 1: return 'Слабый';
+      case 2: return 'Средний';
+      case 3: return 'Надежный';
+      case 4: return 'Очень надежный';
+      default: return '';
+    }
+  };
 
-        if (result) {
-            router.push(`/result/${result.scanId}`);
-        } else if (scanError) {
-            Alert.alert('Ошибка', scanError);
-        }
-    };
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 40 }
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
+          <Button
+            title=""
+            icon={<Ionicons name="arrow-back" size={24} color={Colors.text.primary} />}
+            variant="ghost"
+            onPress={() => router.back()}
+            style={styles.backButton}
+          />
+          <Text style={styles.title}>Анализатор паролей</Text>
+        </Animated.View>
 
-    return (
-        <ScrollView
-            style={styles.container}
-            contentContainerStyle={styles.content}
-            showsVerticalScrollIndicator={false}
-        >
-            {/* Заголовок */}
-            <Animated.View entering={FadeInDown.duration(500)}>
-                <Text style={styles.title}>Анализ сообщений</Text>
-                <Text style={styles.subtitle}>
-                    Вставьте SMS или Email для обнаружения фишинговых ссылок
+        <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+          <Card variant="default" style={styles.inputCard}>
+            <Text style={styles.label}>Введите или сгенерируйте пароль</Text>
+            
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color={Colors.text.muted} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={analyzePassword}
+                placeholder="Ваш пароль..."
+                placeholderTextColor={Colors.text.muted}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.iconButton}
+              >
+                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={Colors.text.muted} />
+              </TouchableOpacity>
+              {password.length > 0 && (
+                <TouchableOpacity
+                  onPress={copyToClipboard}
+                  style={styles.iconButton}
+                >
+                  <Ionicons name="copy-outline" size={20} color={Colors.primary[400]} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <Button
+              title={generating ? "Генерация..." : "Сгенерировать надежный"}
+              variant="secondary"
+              icon={<Ionicons name="color-wand-outline" size={20} color={Colors.text.primary} />}
+              onPress={generatePassword}
+              disabled={generating}
+              fullWidth
+              style={styles.generateButton}
+            />
+          </Card>
+        </Animated.View>
+
+        {result && (
+          <Animated.View entering={FadeInDown.delay(200).duration(400)}>
+            <Card variant="outlined" style={styles.resultCard}>
+              <View style={styles.scoreHeader}>
+                <Text style={styles.scoreTitle}>Надежность:</Text>
+                <Text style={[styles.scoreText, { color: getScoreColor(result.score) }]}>
+                  {getScoreText(result.score)}
                 </Text>
-            </Animated.View>
+              </View>
 
-            {/* Поле ввода сообщения */}
-            <Animated.View entering={FadeInDown.delay(100).duration(500)}>
-                <Card variant="gradient" style={styles.inputCard}>
-                    <Input
-                        value={message}
-                        onChangeText={setMessage}
-                        placeholder="Вставьте подозрительное сообщение здесь..."
-                        label="Текст сообщения"
-                        multiline
-                        numberOfLines={6}
-                        showPasteButton
-                        showClearButton
-                    />
+              <View style={styles.progressBarContainer}>
+                {[0, 1, 2, 3, 4].map((level) => (
+                  <View
+                    key={level}
+                    style={[
+                      styles.progressSegment,
+                      {
+                        backgroundColor: level <= result.score ? getScoreColor(result.score) : Colors.border.default
+                      }
+                    ]}
+                  />
+                ))}
+              </View>
 
-                    {/* Найденные URL */}
-                    {foundUrls.length > 0 && (
-                        <View style={styles.foundUrlsContainer}>
-                            <View style={styles.foundUrlsHeader}>
-                                <Ionicons name="link" size={16} color={Colors.primary[400]} />
-                                <Text style={styles.foundUrlsTitle}>
-                                    Найдено URL: {foundUrls.length}
-                                </Text>
-                            </View>
-                            {foundUrls.map((url, index) => (
-                                <View key={index} style={styles.foundUrlItem}>
-                                    <Text style={styles.foundUrlText} numberOfLines={1}>
-                                        {url}
-                                    </Text>
-                                </View>
-                            ))}
-                        </View>
-                    )}
-                </Card>
-            </Animated.View>
-
-            {/* Примеры сообщений */}
-            <Animated.View entering={FadeInDown.delay(200).duration(500)}>
-                <Text style={styles.sectionTitle}>Примеры для тестирования</Text>
-
-                <Card variant="outlined" style={styles.exampleCard}>
-                    <View style={styles.exampleHeader}>
-                        <View style={styles.exampleBadgeSafe}>
-                            <Text style={styles.exampleBadgeTextSafe}>Легитимное</Text>
-                        </View>
-                    </View>
-                    <Text style={styles.exampleText}>
-                        Здравствуйте! Ваш заказ #12345 успешно оформлен. Отслеживайте доставку на https://kaspi.kz/track
-                    </Text>
-                    <Button
-                        title="Использовать"
-                        variant="ghost"
-                        size="small"
-                        onPress={() => setMessage('Здравствуйте! Ваш заказ #12345 успешно оформлен. Отслеживайте доставку на https://kaspi.kz/track')}
-                    />
-                </Card>
-
-                <Card variant="outlined" style={styles.exampleCardDanger}>
-                    <View style={styles.exampleHeader}>
-                        <View style={styles.exampleBadgeDanger}>
-                            <Text style={styles.exampleBadgeTextDanger}>Фишинг</Text>
-                        </View>
-                    </View>
-                    <Text style={styles.exampleText}>
-                        ВНИМАНИЕ! Ваша карта заблокирована. Срочно подтвердите данные: http://kaspi-secure-login.xyz/verify
-                    </Text>
-                    <Button
-                        title="Использовать"
-                        variant="ghost"
-                        size="small"
-                        onPress={() => setMessage('ВНИМАНИЕ! Ваша карта заблокирована. Срочно подтвердите данные: http://kaspi-secure-login.xyz/verify')}
-                    />
-                </Card>
-            </Animated.View>
-
-            {/* Кнопка анализа */}
-            <Animated.View entering={FadeInDown.delay(300).duration(500)}>
-                <Button
-                    title={isScanning ? "Анализ..." : "Проанализировать сообщение"}
-                    onPress={handleScan}
-                    loading={isScanning}
-                    disabled={!message.trim()}
-                    fullWidth
-                    size="large"
-                    icon={
-                        !isScanning && (
-                            <Ionicons name="search" size={24} color={Colors.text.primary} />
-                        )
-                    }
-                    style={styles.scanButton}
-                />
-            </Animated.View>
-
-            {/* Информация */}
-            <Animated.View entering={FadeInDown.delay(400).duration(500)}>
-                <Card variant="outlined" style={styles.infoCard}>
-                    <View style={styles.infoRow}>
-                        <Ionicons name="information-circle" size={20} color={Colors.primary[400]} />
-                        <Text style={styles.infoText}>
-                            Система автоматически извлечёт и проверит URL из текста сообщения
-                        </Text>
-                    </View>
-                </Card>
-            </Animated.View>
-        </ScrollView>
-    );
+              <View style={styles.feedbackContainer}>
+                <Text style={styles.feedbackTitle}>Рекомендации:</Text>
+                {result.feedback.map((tip: string, index: number) => (
+                  <View key={index} style={styles.feedbackItem}>
+                    <Ionicons name={result.score === 4 ? "checkmark-circle" : "alert-circle"} size={16} color={getScoreColor(result.score)} />
+                    <Text style={styles.feedbackText}>{tip}</Text>
+                  </View>
+                ))}
+              </View>
+            </Card>
+          </Animated.View>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.background.primary,
-    },
-    content: {
-        padding: Spacing.md,
-        paddingTop: Spacing.xl,
-        paddingBottom: Spacing.xxl,
-    },
-    title: {
-        ...Typography.h1,
-        color: Colors.text.primary,
-    },
-    subtitle: {
-        ...Typography.body,
-        color: Colors.text.secondary,
-        marginTop: Spacing.xs,
-        marginBottom: Spacing.lg,
-    },
-    inputCard: {
-        marginBottom: Spacing.lg,
-    },
-    foundUrlsContainer: {
-        marginTop: Spacing.md,
-        padding: Spacing.md,
-        backgroundColor: Colors.background.tertiary,
-        borderRadius: BorderRadius.md,
-    },
-    foundUrlsHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: Spacing.sm,
-    },
-    foundUrlsTitle: {
-        ...Typography.small,
-        color: Colors.primary[400],
-        marginLeft: Spacing.xs,
-        fontWeight: '500',
-    },
-    foundUrlItem: {
-        backgroundColor: Colors.background.secondary,
-        padding: Spacing.sm,
-        borderRadius: BorderRadius.sm,
-        marginTop: Spacing.xs,
-    },
-    foundUrlText: {
-        ...Typography.mono,
-        color: Colors.text.secondary,
-    },
-    sectionTitle: {
-        ...Typography.h4,
-        color: Colors.text.primary,
-        marginBottom: Spacing.md,
-    },
-    exampleCard: {
-        marginBottom: Spacing.md,
-        borderColor: Colors.status.safe + '50',
-    },
-    exampleCardDanger: {
-        marginBottom: Spacing.md,
-        borderColor: Colors.status.dangerous + '50',
-    },
-    exampleHeader: {
-        flexDirection: 'row',
-        marginBottom: Spacing.sm,
-    },
-    exampleBadgeSafe: {
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: Spacing.xs,
-        borderRadius: BorderRadius.sm,
-        backgroundColor: Colors.status.safe + '20',
-    },
-    exampleBadgeTextSafe: {
-        ...Typography.caption,
-        fontWeight: '500',
-        color: Colors.status.safe,
-    },
-    exampleBadgeDanger: {
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: Spacing.xs,
-        borderRadius: BorderRadius.sm,
-        backgroundColor: Colors.status.dangerous + '20',
-    },
-    exampleBadgeTextDanger: {
-        ...Typography.caption,
-        fontWeight: '500',
-        color: Colors.status.dangerous,
-    },
-    exampleText: {
-        ...Typography.small,
-        color: Colors.text.secondary,
-        marginBottom: Spacing.sm,
-    },
-    scanButton: {
-        marginVertical: Spacing.lg,
-    },
-    infoCard: {
-        marginTop: Spacing.sm,
-    },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-    },
-    infoText: {
-        ...Typography.small,
-        color: Colors.text.secondary,
-        flex: 1,
-        marginLeft: Spacing.sm,
-    },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background.primary,
+  },
+  content: {
+    padding: Spacing.md,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
+  backButton: {
+    padding: 0,
+    width: 40,
+    height: 40,
+    marginRight: Spacing.sm,
+  },
+  title: {
+    ...Typography.h2,
+    color: Colors.text.primary,
+  },
+  inputCard: {
+    marginBottom: Spacing.md,
+  },
+  label: {
+    ...Typography.bodyMedium,
+    color: Colors.text.secondary,
+    marginBottom: Spacing.sm,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background.secondary,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.border.default,
+    marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    height: 50,
+  },
+  inputIcon: {
+    marginRight: Spacing.sm,
+  },
+  input: {
+    flex: 1,
+    color: Colors.text.primary,
+    ...Typography.body,
+    height: '100%',
+  },
+  iconButton: {
+    padding: 0,
+    width: 36,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  generateButton: {
+    marginTop: Spacing.sm,
+  },
+  resultCard: {
+    padding: Spacing.lg,
+  },
+  scoreHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  scoreTitle: {
+    ...Typography.h4,
+    color: Colors.text.primary,
+  },
+  scoreText: {
+    ...Typography.h4,
+    fontWeight: '700',
+  },
+  progressBarContainer: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: Spacing.xl,
+  },
+  progressSegment: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background.secondary,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    marginBottom: Spacing.lg,
+  },
+  infoText: {
+    ...Typography.body,
+    color: Colors.text.secondary,
+    marginLeft: Spacing.sm,
+    flex: 1,
+  },
+  highlight: {
+    color: Colors.text.primary,
+    fontWeight: '600',
+  },
+  feedbackContainer: {
+    gap: Spacing.sm,
+  },
+  feedbackTitle: {
+    ...Typography.bodyMedium,
+    color: Colors.text.primary,
+    marginBottom: Spacing.xs,
+  },
+  feedbackItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  feedbackText: {
+    ...Typography.body,
+    color: Colors.text.secondary,
+    flex: 1,
+  },
 });

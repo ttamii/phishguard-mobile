@@ -53,14 +53,14 @@ export default function TabLayout() {
           }}
         />
 
-        {/* URL Сканер */}
+        {/* Обучение (вместо URL Сканера) */}
         <Tabs.Screen
-          name="scanner"
+          name="education"
           options={{
-            title: 'URL',
+            title: 'Обучение',
             tabBarIcon: ({ color, focused }) => (
               <Ionicons
-                name={focused ? 'link' : 'link-outline'}
+                name={focused ? 'school' : 'school-outline'}
                 size={22}
                 color={color}
               />
@@ -121,6 +121,7 @@ export default function TabLayout() {
         />
 
         {/* Скрытые экраны */}
+        <Tabs.Screen name="scanner" options={{ href: null }} />
         <Tabs.Screen name="message" options={{ href: null }} />
         <Tabs.Screen name="chatbot" options={{ href: null }} />
         <Tabs.Screen name="about" options={{ href: null }} />
