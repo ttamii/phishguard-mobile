@@ -111,7 +111,7 @@ export default function ScannerScreen() {
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.exampleButton, styles.exampleDanger]}
-                                onPress={() => setUrl('http://secure-bank-login.xyz/verify')}
+                                onPress={() => setUrl('http://192.168.1.1/login?user=admin&token=abc123&session=xyz&redirect=kaspi-bank&verify=true')}
                             >
                                 <Text style={styles.exampleButtonText}>фишинг-пример</Text>
                             </TouchableOpacity>
@@ -129,7 +129,7 @@ export default function ScannerScreen() {
                         </View>
                         <View style={styles.modelDetails}>
                             <Text style={styles.modelTitle}>XGBoost</Text>
-                            <Text style={styles.modelSubtitle}>Точность 94.5% • Градиентный бустинг</Text>
+                            <Text style={styles.modelSubtitle}>Точность 99.6% • F1-Score 98.99%</Text>
                         </View>
                     </View>
                 </Card>
