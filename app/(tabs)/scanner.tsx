@@ -107,11 +107,11 @@ export default function ScannerScreen() {
                                 style={styles.exampleButton}
                                 onPress={() => setUrl('https://google.com')}
                             >
-                                <Text style={styles.exampleButtonText}>google.com</Text>
+                                <Text style={styles.exampleButtonText}>безопасный-пример</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.exampleButton, styles.exampleDanger]}
-                                onPress={() => setUrl('http://192.168.1.1/login?user=admin&token=abc123&session=xyz&redirect=kaspi-bank&verify=true')}
+                                onPress={() => setUrl('http://egov-pay.kz')}
                             >
                                 <Text style={styles.exampleButtonText}>фишинг-пример</Text>
                             </TouchableOpacity>
