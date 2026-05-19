@@ -111,7 +111,7 @@ export default function ScannerScreen() {
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.exampleButton, styles.exampleDanger]}
-                                onPress={() => setUrl('http://egov-pay.kz')}
+                                onPress={() => setUrl('http://secure-bank-login.xyz/verify')}
                             >
                                 <Text style={styles.exampleButtonText}>фишинг-пример</Text>
                             </TouchableOpacity>
